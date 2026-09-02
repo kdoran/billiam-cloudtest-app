@@ -1,4 +1,7 @@
 ---
+import ChatWidget from '../components/ChatWidget';
+import '../styles/global.css';
+
 const outline = [
 	{
 		title: 'What is a code harness?',
@@ -68,7 +71,7 @@ const outline = [
 			section { display: grid; grid-template-columns: 4rem 1fr; gap: 1rem; border-top: 1px solid color-mix(in srgb, CanvasText 20%, Canvas); padding: 1.75rem 0; }
 			.number { padding-top: 0.1rem; }
 			h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem; }
-			ul { margin: 0; padding-left: 1.2rem; }
+			ul { list-style: disc; margin: 0; padding-left: 1.2rem; }
 			li + li { margin-top: 0.4rem; }
 			@media (max-width: 30rem) { section { grid-template-columns: 2.75rem 1fr; gap: 0.5rem; } }
 		</style>
@@ -99,5 +102,6 @@ const outline = [
 				})}
 			</ol>
 		</main>
+		<ChatWidget client:load />
 	</body>
 </html>
