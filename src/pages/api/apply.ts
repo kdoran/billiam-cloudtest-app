@@ -17,9 +17,11 @@ export const POST: APIRoute = async ({ request }) => {
 	}
 
 	let task: string | undefined;
+	let pagePath: string | undefined;
 	try {
-		const body = (await request.json()) as { task?: unknown };
+		const body = (await request.json()) as { task?: unknown; pagePath?: unknown };
 		task = typeof body.task === 'string' ? body.task : undefined;
+		pagePath = typeof body.pagePath === 'string' ? body.pagePath : undefined;
 	} catch {
 		return Response.json({ error: 'invalid JSON body' }, { status: 400 });
 	}
@@ -32,7 +34,7 @@ export const POST: APIRoute = async ({ request }) => {
 		workerRes = await fetch(AGENT_WORKER_URL, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', 'X-Agent-Secret': AGENT_SHARED_SECRET },
-			body: JSON.stringify({ repo: APP_REPO_URL, task }),
+			body: JSON.stringify({ repo: APP_REPO_URL, task, pagePath }),
 			// The agent clones the repo, runs Claude Code, installs deps,
 			// builds, and publishes a preview - can take a while. This whole
 			// call streams (SSE) rather than waiting for it all to finish.

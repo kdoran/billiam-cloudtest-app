@@ -37,11 +37,20 @@ export async function* readAgentEvents(body: ReadableStream<Uint8Array>): AsyncG
 
 // POSTs a task to /api/apply and returns its SSE body, or throws with a
 // readable message if the request itself failed before streaming began.
-export async function applyTask(task: string): Promise<ReadableStream<Uint8Array>> {
+// `pagePath` (defaults to the current page) tells the agent which page the
+// request came from, so "this page" in a task description like "make this
+// page monospace" resolves to the right file - without it, every page's UI
+// posts to the same generic endpoint with no way to disambiguate, and the
+// agent has to guess (it guessed wrong once already: a request typed on
+// /about got applied to the homepage instead).
+export async function applyTask(
+	task: string,
+	pagePath: string = window.location.pathname,
+): Promise<ReadableStream<Uint8Array>> {
 	const res = await fetch('/api/apply', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ task }),
+		body: JSON.stringify({ task, pagePath }),
 	});
 	if (!res.ok || !res.body) {
 		let message = `Request failed (${res.status})`;
