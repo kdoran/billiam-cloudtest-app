@@ -48,6 +48,12 @@
 				word-break: break-word;
 			}
 			#status { color: #777; }
+			#logs {
+				max-height: 16rem;
+				overflow-y: auto;
+				font-size: 0.85em;
+			}
+			#logs[hidden] { display: none; }
 			#error { color: #c0392b; white-space: pre-wrap; }
 		</style>
 	</head>
@@ -62,12 +68,10 @@
 
 		<p id="status" hidden></p>
 
+		<pre id="logs" hidden></pre>
+
 		<div id="result" hidden>
 			<a id="previewLink" href="#" target="_blank" rel="noopener"></a>
-			<details>
-				<summary>Agent logs</summary>
-				<pre id="logs"></pre>
-			</details>
 			<details>
 				<summary>Diff</summary>
 				<pre id="diff"></pre>
@@ -77,6 +81,17 @@
 		<p id="error" hidden></p>
 
 		<script>
+			// Events emitted by agent-worker's SSE stream (proxied through
+			// /api/apply as-is). Plain hand-rolled SSE - what's actually being
+			// streamed is a sandboxed shell subprocess's stdout, not model
+			// tokens, so a token-streaming library (like the Vercel AI SDK)
+			// doesn't fit here.
+			type AgentEvent =
+				| { type: 'status'; message: string }
+				| { type: 'log'; stream: 'stdout' | 'stderr'; data: string }
+				| { type: 'done'; logs: string; diff: string; previewUrl: string }
+				| { type: 'error'; message: string };
+
 			const form = document.querySelector<HTMLFormElement>('#requestForm')!;
 			const taskInput = document.querySelector<HTMLTextAreaElement>('#task')!;
 			const submitBtn = document.querySelector<HTMLButtonElement>('#submitBtn')!;
@@ -87,6 +102,30 @@
 			const diffEl = document.querySelector<HTMLPreElement>('#diff')!;
 			const errorEl = document.querySelector<HTMLParagraphElement>('#error')!;
 
+			// Parses "data: {...json...}\n\n" frames out of a decoded SSE text
+			// stream and yields the parsed events as they arrive.
+			async function* readEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<AgentEvent> {
+				// TS's DOM lib types TextDecoderStream's writable side as
+				// WritableStream<BufferSource>, which pipeThrough's stricter
+				// ReadableStream<Uint8Array> signature rejects - a lib typing
+				// quirk, not a real incompatibility.
+				const reader = (body as ReadableStream<any>).pipeThrough(new TextDecoderStream()).getReader();
+				let buffer = '';
+				for (;;) {
+					const { value, done } = await reader.read();
+					if (done) return;
+					buffer += value;
+					let sepIndex: number;
+					while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+						const frame = buffer.slice(0, sepIndex);
+						buffer = buffer.slice(sepIndex + 2);
+						const dataLine = frame.split('\n').find((line) => line.startsWith('data:'));
+						if (!dataLine) continue;
+						yield JSON.parse(dataLine.slice(5).trim()) as AgentEvent;
+					}
+				}
+			}
+
 			form.addEventListener('submit', async (e) => {
 				e.preventDefault();
 				const task = taskInput.value.trim();
@@ -95,8 +134,10 @@
 				submitBtn.disabled = true;
 				resultEl.hidden = true;
 				errorEl.hidden = true;
+				logsEl.hidden = false;
+				logsEl.textContent = '';
 				statusEl.hidden = false;
-				statusEl.textContent = 'Agent is editing the app… this can take a minute or two.';
+				statusEl.textContent = 'Starting…';
 
 				try {
 					const res = await fetch('/api/apply', {
@@ -104,19 +145,32 @@
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ task }),
 					});
-					const data = (await res.json()) as {
-						error?: string;
-						previewUrl?: string;
-						logs?: string;
-						diff?: string;
-					};
-					if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
+					if (!res.ok || !res.body) {
+						let message = `Request failed (${res.status})`;
+						try {
+							const data = (await res.json()) as { error?: string };
+							message = data.error ?? message;
+						} catch {
+							/* body wasn't JSON - keep the generic message */
+						}
+						throw new Error(message);
+					}
 
-					previewLink.href = data.previewUrl ?? '#';
-					previewLink.textContent = `Open preview → ${data.previewUrl ?? '(none)'}`;
-					logsEl.textContent = data.logs || '(no logs)';
-					diffEl.textContent = data.diff || '(no changes)';
-					resultEl.hidden = false;
+					for await (const event of readEvents(res.body)) {
+						if (event.type === 'status') {
+							statusEl.textContent = event.message;
+						} else if (event.type === 'log') {
+							logsEl.textContent += event.data;
+							logsEl.scrollTop = logsEl.scrollHeight;
+						} else if (event.type === 'done') {
+							previewLink.href = event.previewUrl;
+							previewLink.textContent = `Open preview → ${event.previewUrl}`;
+							diffEl.textContent = event.diff || '(no changes)';
+							resultEl.hidden = false;
+						} else if (event.type === 'error') {
+							throw new Error(event.message);
+						}
+					}
 				} catch (err) {
 					errorEl.hidden = false;
 					errorEl.textContent = err instanceof Error ? err.message : String(err);
