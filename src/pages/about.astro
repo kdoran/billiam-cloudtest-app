@@ -8,21 +8,41 @@ import '../styles/global.css';
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" sizes="32x32" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>About</title>
+		<title>Video script outline</title>
 	</head>
 	<body class="mx-auto max-w-2xl p-8 font-mono">
-		<h1 class="text-2xl font-semibold">About this app</h1>
-		<p class="mt-4 text-muted-foreground">
-			This is a self-editing Astro app: describe a change (here, via the chat bubble in the corner, or on the
-			<a href="/" class="underline">homepage</a>), and a coding agent clones this app's own repository, makes the
-			change with Claude Code, and commits, builds, and deploys it live - the same request either way.
-		</p>
-		<p class="mt-4 text-muted-foreground">
-			This page itself is fully static (prerendered at build time, no server-side rendering) - the chat widget is
-			the only part of it that runs client-side, as a React island.
-		</p>
+		<h1 class="text-2xl font-semibold">Video script outline</h1>
+		<hr class="mt-4 w-16 border-t-2" />
+
+		<ol class="mt-8 space-y-4">
+			<li class="flex gap-4">
+				<span class="w-8 shrink-0 tabular-nums text-muted-foreground">I.</span>
+				<span>What is a harness?</span>
+			</li>
+			<li class="flex gap-4">
+				<span class="w-8 shrink-0 tabular-nums text-muted-foreground">II.</span>
+				<span>What is running a harness in a cloud environment?</span>
+			</li>
+			<li class="flex gap-4">
+				<span class="w-8 shrink-0 tabular-nums text-muted-foreground">III.</span>
+				<span>What is this example running in Cloudflare's sandbox SDK?</span>
+			</li>
+			<li class="flex gap-4">
+				<span class="w-8 shrink-0 tabular-nums text-muted-foreground">IV.</span>
+				<span>What is the Billiam example?</span>
+			</li>
+			<li class="flex gap-4">
+				<span class="w-8 shrink-0 tabular-nums text-muted-foreground">V.</span>
+				<span>Claude</span>
+			</li>
+			<li class="flex gap-4">
+				<span class="w-8 shrink-0 tabular-nums text-muted-foreground">VI.</span>
+				<span>ChatGPT</span>
+			</li>
+		</ol>
 
 		<ChatWidget client:load />
 	</body>
