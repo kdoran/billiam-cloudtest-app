@@ -1,0 +1,125 @@
+---
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Self-editing app</title>
+		<style>
+			:root { color-scheme: light dark; }
+			body {
+				font-family: system-ui, sans-serif;
+				max-width: 40rem;
+				margin: 4rem auto;
+				padding: 0 1rem;
+			}
+			h1 { font-size: 1.4rem; }
+			p.sub { color: #777; margin-top: -0.5rem; }
+			textarea {
+				width: 100%;
+				min-height: 6rem;
+				font: inherit;
+				padding: 0.75rem;
+				box-sizing: border-box;
+			}
+			button {
+				margin-top: 0.75rem;
+				padding: 0.6rem 1.2rem;
+				font: inherit;
+				cursor: pointer;
+			}
+			button:disabled { cursor: default; opacity: 0.6; }
+			#result { margin-top: 2rem; }
+			#result[hidden] { display: none; }
+			#previewLink {
+				display: inline-block;
+				margin-bottom: 1rem;
+				font-weight: 600;
+			}
+			details summary { cursor: pointer; }
+			pre {
+				background: color-mix(in srgb, currentColor 6%, transparent);
+				padding: 0.75rem;
+				overflow-x: auto;
+				white-space: pre-wrap;
+				word-break: break-word;
+			}
+			#status { color: #777; }
+			#error { color: #c0392b; white-space: pre-wrap; }
+		</style>
+	</head>
+	<body>
+		<h1>What should this app do next?</h1>
+		<p class="sub">Describe a change. A coding agent will edit this app's own repo and hand back a live preview.</p>
+
+		<form id="requestForm">
+			<textarea id="task" placeholder="e.g. Add a dark mode toggle to the header" required></textarea>
+			<button id="submitBtn" type="submit">Make the change</button>
+		</form>
+
+		<p id="status" hidden></p>
+
+		<div id="result" hidden>
+			<a id="previewLink" href="#" target="_blank" rel="noopener"></a>
+			<details>
+				<summary>Agent logs</summary>
+				<pre id="logs"></pre>
+			</details>
+			<details>
+				<summary>Diff</summary>
+				<pre id="diff"></pre>
+			</details>
+		</div>
+
+		<p id="error" hidden></p>
+
+		<script>
+			const form = document.querySelector<HTMLFormElement>('#requestForm')!;
+			const taskInput = document.querySelector<HTMLTextAreaElement>('#task')!;
+			const submitBtn = document.querySelector<HTMLButtonElement>('#submitBtn')!;
+			const statusEl = document.querySelector<HTMLParagraphElement>('#status')!;
+			const resultEl = document.querySelector<HTMLDivElement>('#result')!;
+			const previewLink = document.querySelector<HTMLAnchorElement>('#previewLink')!;
+			const logsEl = document.querySelector<HTMLPreElement>('#logs')!;
+			const diffEl = document.querySelector<HTMLPreElement>('#diff')!;
+			const errorEl = document.querySelector<HTMLParagraphElement>('#error')!;
+
+			form.addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const task = taskInput.value.trim();
+				if (!task) return;
+
+				submitBtn.disabled = true;
+				resultEl.hidden = true;
+				errorEl.hidden = true;
+				statusEl.hidden = false;
+				statusEl.textContent = 'Agent is editing the app… this can take a minute or two.';
+
+				try {
+					const res = await fetch('/api/apply', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ task }),
+					});
+					const data = await res.json();
+					if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
+
+					previewLink.href = data.previewUrl;
+					previewLink.textContent = `Open preview → ${data.previewUrl}`;
+					logsEl.textContent = data.logs || '(no logs)';
+					diffEl.textContent = data.diff || '(no changes)';
+					resultEl.hidden = false;
+				} catch (err) {
+					errorEl.hidden = false;
+					errorEl.textContent = err instanceof Error ? err.message : String(err);
+				} finally {
+					statusEl.hidden = true;
+					submitBtn.disabled = false;
+				}
+			});
+		</script>
+	</body>
+</html>
