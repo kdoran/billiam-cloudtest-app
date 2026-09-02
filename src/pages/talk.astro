@@ -35,6 +35,16 @@ const outline = [
 			'Designed for load-bearing engineering work with correctness-first guardrails and session persistence.',
 		],
 	},
+	{
+		number: '4',
+		title: 'A self-updating Cloudflare Worker',
+		points: [
+			'Claude Code is installed inside a Cloudflare Sandbox SDK VM — a real filesystem, shell, and network, started on demand.',
+			'The Worker serving this site accepts a task, forwards it to that sandbox, and Claude Code clones the repo, edits the code, installs, and builds.',
+			'The build is deployed back over the Worker itself, so the app rewrites its own source through requests that round-trip to the VM.',
+			'This page is the demo: the harness lives in the sandbox, and the deploy target is the thing hosting the harness.',
+		],
+	},
 ];
 ---
 
