@@ -1,0 +1,101 @@
+---
+const outline = [
+	{
+		title: 'What is a code harness?',
+		points: [
+			'A code harness is the environment around a model that lets it do engineering work.',
+			'It supplies tools, context, an observe-and-act loop, and guardrails.',
+			'Model = reasoning engine. Harness = the system that lets it operate.',
+		],
+	},
+	{
+		number: '1',
+		title: 'Claude Code',
+		points: [
+			'Reads the repository, edits files, runs commands and tests, and uses git.',
+			'Its tools, permissions, session context, and feedback loop are the harness in action.',
+		],
+	},
+	{
+		number: '2',
+		title: 'Codex',
+		points: [
+			'Works in a shared workspace with access to files, terminal commands, and visual verification.',
+			'The desktop app provides the context, tools, collaboration surface, and safety boundaries around Codex.',
+		],
+	},
+	{
+		number: '3',
+		title: 'OMP',
+		points: [
+			'Open-source code harness that orchestrates models with filesystem access, shell commands, and multi-agent coordination.',
+			'Designed for load-bearing engineering work with correctness-first guardrails and session persistence.',
+		],
+	},
+];
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="description" content="A brief outline of a talk about code harnesses." />
+		<title>What is a code harness?</title>
+		<style>
+			:root { color-scheme: light dark; }
+			* { box-sizing: border-box; }
+			body {
+				margin: 0;
+				background: Canvas;
+				color: CanvasText;
+				font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+				font-size: clamp(0.9rem, 1.6vw, 1rem);
+				line-height: 1.65;
+			}
+			main {
+				width: min(100% - 2.5rem, 48rem);
+				margin: 0 auto;
+				padding: 12vh 0 5rem;
+			}
+			header { margin-bottom: 4rem; }
+			.eyebrow, .number { color: color-mix(in srgb, CanvasText 55%, Canvas); }
+			.eyebrow { margin: 0 0 1rem; }
+			h1 { font-size: clamp(1.65rem, 4vw, 2.5rem); line-height: 1.2; margin: 0; font-weight: 500; }
+			ol { list-style: none; padding: 0; margin: 0; }
+			section { display: grid; grid-template-columns: 4rem 1fr; gap: 1rem; border-top: 1px solid color-mix(in srgb, CanvasText 20%, Canvas); padding: 1.75rem 0; }
+			.number { padding-top: 0.1rem; }
+			h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem; }
+			ul { margin: 0; padding-left: 1.2rem; }
+			li + li { margin-top: 0.4rem; }
+			@media (max-width: 30rem) { section { grid-template-columns: 2.75rem 1fr; gap: 0.5rem; } }
+		</style>
+	</head>
+	<body>
+		<main>
+			<header>
+				<p class="eyebrow">TALK OUTLINE</p>
+				<h1>What is a code harness?</h1>
+			</header>
+
+			<ol>
+				{outline.map((section) => {
+					const id = section.number ?? section.title.toLowerCase().replace(/\s+/g, '-');
+					return (
+					<li>
+						<section aria-labelledby={`section-${id}`}>
+							<span class="number">{section.number ?? ''}</span>
+							<div>
+								<h2 id={`section-${id}`}>{section.title}</h2>
+								<ul>
+									{section.points.map((point) => <li>{point}</li>)}
+								</ul>
+							</div>
+						</section>
+					</li>
+					);
+				})}
+			</ol>
+		</main>
+	</body>
+</html>
