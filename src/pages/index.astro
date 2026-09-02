@@ -104,11 +104,16 @@
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ task }),
 					});
-					const data = await res.json();
-					if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
+					const data = (await res.json()) as {
+						error?: string;
+						previewUrl?: string;
+						logs?: string;
+						diff?: string;
+					};
+					if (!res.ok) throw new Error(data.error ?? `Request failed (${res.status})`);
 
-					previewLink.href = data.previewUrl;
-					previewLink.textContent = `Open preview → ${data.previewUrl}`;
+					previewLink.href = data.previewUrl ?? '#';
+					previewLink.textContent = `Open preview → ${data.previewUrl ?? '(none)'}`;
 					logsEl.textContent = data.logs || '(no logs)';
 					diffEl.textContent = data.diff || '(no changes)';
 					resultEl.hidden = false;

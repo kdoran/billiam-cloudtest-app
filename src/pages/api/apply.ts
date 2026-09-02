@@ -1,12 +1,13 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 
 export const prerender = false;
 
-// Runs on the Node server. Never exposed to the browser.
-const AGENT_WORKER_URL = process.env.AGENT_WORKER_URL;
-const APP_REPO_URL = process.env.APP_REPO_URL;
-
 export const POST: APIRoute = async ({ request }) => {
+	// Cloudflare Workers bindings/vars, not exposed to the browser.
+	const AGENT_WORKER_URL = env.AGENT_WORKER_URL;
+	const APP_REPO_URL = env.APP_REPO_URL;
+
 	if (!AGENT_WORKER_URL || !APP_REPO_URL) {
 		return Response.json(
 			{ error: 'Server is missing AGENT_WORKER_URL or APP_REPO_URL. See app/.env.example.' },
@@ -16,7 +17,8 @@ export const POST: APIRoute = async ({ request }) => {
 
 	let task: string | undefined;
 	try {
-		({ task } = await request.json());
+		const body = (await request.json()) as { task?: unknown };
+		task = typeof body.task === 'string' ? body.task : undefined;
 	} catch {
 		return Response.json({ error: 'invalid JSON body' }, { status: 400 });
 	}
