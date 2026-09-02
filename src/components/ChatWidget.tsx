@@ -27,48 +27,54 @@ interface ChatMessage {
 // model call, and what's actually streaming here is a multi-step pipeline
 // (clone -> Claude Code -> install -> build -> commit -> deploy), not model
 // tokens. The components don't care what fed them, so they still fit fine.
+//
+// Unlike the homepage's console-style log box, this only ever shows a
+// friendly one-line status while working (never the raw diff/npm/wrangler
+// output the pipeline emits as 'log' events) and a clean final summary -
+// a chat bubble reads as noise once it's full of `git diff` hunks.
 export default function ChatWidget() {
 	const [open, setOpen] = useState(false);
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [workingStatus, setWorkingStatus] = useState<string | null>(null);
 	const [status, setStatus] = useState<'idle' | 'submitted' | 'streaming' | 'error'>('idle');
+
+	function addAssistantMessage(text: string) {
+		setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'assistant', text }]);
+	}
 
 	async function handleSubmit(message: PromptInputMessage) {
 		const task = message.text.trim();
 		if (!task || status === 'submitted' || status === 'streaming') return;
 
-		const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', text: task };
-		const assistantId = crypto.randomUUID();
-		setMessages((prev) => [...prev, userMessage, { id: assistantId, role: 'assistant', text: '' }]);
+		setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: 'user', text: task }]);
 		setStatus('submitted');
-
-		const appendToAssistant = (chunk: string) =>
-			setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, text: m.text + chunk } : m)));
+		setWorkingStatus('Starting…');
 
 		try {
 			const body = await applyTask(task);
 			setStatus('streaming');
-			let done = false;
+			let doneResult: { logs: string; appUrl: string } | null = null;
 			for await (const event of readAgentEvents(body)) {
 				if (event.type === 'status') {
-					appendToAssistant(`\n[${event.message}]\n`);
-				} else if (event.type === 'log') {
-					appendToAssistant(event.data);
+					setWorkingStatus(event.message);
 				} else if (event.type === 'done') {
-					done = true;
-					appendToAssistant(`\n\nLive at ${event.appUrl} - reloading…`);
+					doneResult = event;
 				} else if (event.type === 'error') {
 					throw new Error(event.message);
 				}
+				// 'log' events (raw diff/npm/wrangler output) are intentionally
+				// not shown here - see the homepage's log box for that detail.
 			}
-			// Already committed to main and deployed live - this *is* that new
-			// version, so just reload into it.
-			if (done) {
+			setWorkingStatus(null);
+			if (doneResult) {
+				addAssistantMessage(`${doneResult.logs || 'Done.'}\n\nLive now - reloading…`);
 				window.location.reload();
 				return;
 			}
 			setStatus('idle');
 		} catch (err) {
-			appendToAssistant(`\n\nError: ${err instanceof Error ? err.message : String(err)}`);
+			setWorkingStatus(null);
+			addAssistantMessage(`Error: ${err instanceof Error ? err.message : String(err)}`);
 			setStatus('error');
 		}
 	}
@@ -99,10 +105,20 @@ export default function ChatWidget() {
 					{messages.map((m) => (
 						<Message key={m.id} from={m.role}>
 							<MessageContent>
-								<div className="whitespace-pre-wrap text-sm">{m.text || (m.role === 'assistant' ? '…' : '')}</div>
+								<div className="whitespace-pre-wrap text-sm">{m.text}</div>
 							</MessageContent>
 						</Message>
 					))}
+					{workingStatus && (
+						<Message from="assistant">
+							<MessageContent>
+								<div className="flex items-center gap-2 text-muted-foreground text-sm italic">
+									<span className="size-2 animate-pulse rounded-full bg-current" />
+									{workingStatus}
+								</div>
+							</MessageContent>
+						</Message>
+					)}
 				</ConversationContent>
 				<ConversationScrollButton />
 			</Conversation>
