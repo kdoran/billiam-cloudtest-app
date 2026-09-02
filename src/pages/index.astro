@@ -32,14 +32,6 @@
 				cursor: pointer;
 			}
 			button:disabled { cursor: default; opacity: 0.6; }
-			#result { margin-top: 2rem; }
-			#result[hidden] { display: none; }
-			#previewLink {
-				display: inline-block;
-				margin-bottom: 1rem;
-				font-weight: 600;
-			}
-			details summary { cursor: pointer; }
 			pre {
 				background: color-mix(in srgb, currentColor 6%, transparent);
 				padding: 0.75rem;
@@ -70,14 +62,6 @@
 
 		<pre id="logs" hidden></pre>
 
-		<div id="result" hidden>
-			<a id="previewLink" href="#" target="_blank" rel="noopener"></a>
-			<details>
-				<summary>Diff</summary>
-				<pre id="diff"></pre>
-			</details>
-		</div>
-
 		<p id="error" hidden></p>
 
 		<script>
@@ -89,17 +73,14 @@
 			type AgentEvent =
 				| { type: 'status'; message: string }
 				| { type: 'log'; stream: 'stdout' | 'stderr'; data: string }
-				| { type: 'done'; logs: string; diff: string; previewUrl: string }
+				| { type: 'done'; logs: string; diff: string; appUrl: string }
 				| { type: 'error'; message: string };
 
 			const form = document.querySelector<HTMLFormElement>('#requestForm')!;
 			const taskInput = document.querySelector<HTMLTextAreaElement>('#task')!;
 			const submitBtn = document.querySelector<HTMLButtonElement>('#submitBtn')!;
 			const statusEl = document.querySelector<HTMLParagraphElement>('#status')!;
-			const resultEl = document.querySelector<HTMLDivElement>('#result')!;
-			const previewLink = document.querySelector<HTMLAnchorElement>('#previewLink')!;
 			const logsEl = document.querySelector<HTMLPreElement>('#logs')!;
-			const diffEl = document.querySelector<HTMLPreElement>('#diff')!;
 			const errorEl = document.querySelector<HTMLParagraphElement>('#error')!;
 
 			// Parses "data: {...json...}\n\n" frames out of a decoded SSE text
@@ -121,7 +102,9 @@
 						buffer = buffer.slice(sepIndex + 2);
 						const dataLine = frame.split('\n').find((line) => line.startsWith('data:'));
 						if (!dataLine) continue;
-						yield JSON.parse(dataLine.slice(5).trim()) as AgentEvent;
+						const payload = dataLine.slice(5).trim();
+						if (payload === '[DONE]') continue; // stream-end sentinel, not an event
+						yield JSON.parse(payload) as AgentEvent;
 					}
 				}
 			}
@@ -132,7 +115,6 @@
 				if (!task) return;
 
 				submitBtn.disabled = true;
-				resultEl.hidden = true;
 				errorEl.hidden = true;
 				logsEl.hidden = false;
 				logsEl.textContent = '';
@@ -156,6 +138,7 @@
 						throw new Error(message);
 					}
 
+					let done = false;
 					for await (const event of readEvents(res.body)) {
 						if (event.type === 'status') {
 							statusEl.textContent = event.message;
@@ -163,14 +146,15 @@
 							logsEl.textContent += event.data;
 							logsEl.scrollTop = logsEl.scrollHeight;
 						} else if (event.type === 'done') {
-							previewLink.href = event.previewUrl;
-							previewLink.textContent = `Open preview → ${event.previewUrl}`;
-							diffEl.textContent = event.diff || '(no changes)';
-							resultEl.hidden = false;
+							done = true;
+							statusEl.textContent = 'Live - reloading…';
 						} else if (event.type === 'error') {
 							throw new Error(event.message);
 						}
 					}
+					// The change is already committed to main and deployed live -
+					// this *is* that new version, so just reload into it.
+					if (done) window.location.reload();
 				} catch (err) {
 					errorEl.hidden = false;
 					errorEl.textContent = err instanceof Error ? err.message : String(err);
